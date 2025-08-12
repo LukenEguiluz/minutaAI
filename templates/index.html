@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MinutaAI - Transcripción de Audio/Video</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 15px;
+            padding: 40px 20px;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background-color: #f8f9ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background-color: #f0f4ff;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .file-input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .selected-file {
+            background: #e8f5e8;
+            border: 2px solid #4caf50;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .selected-file.show {
+            display: block;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .file-name {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .file-size {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+            min-width: 150px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .progress-container {
+            display: none;
+            margin: 20px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .result-container {
+            display: none;
+            margin-top: 30px;
+            text-align: left;
+        }
+
+        .result-title {
+            font-size: 1.3rem;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .transcription-text {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            line-height: 1.6;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .download-section {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .error-message {
+            background: #ffe6e6;
+            border: 2px solid #ff4444;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #d32f2f;
+            display: none;
+        }
+
+        .success-message {
+            background: #e8f5e8;
+            border: 2px solid #4caf50;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #2e7d32;
+            display: none;
+        }
+
+        .supported-formats {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .formats-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .formats-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .format-tag {
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            .logo {
+                font-size: 2rem;
+            }
+            
+            .upload-area {
+                padding: 30px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <i class="fas fa-microphone"></i> MinutaAI
+        </div>
+        <div class="subtitle">
+            Transcripción inteligente de audio y video
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+            <input type="file" class="file-input" id="fileInput" accept="audio/*,video/*">
+            <div class="upload-icon">
+                <i class="fas fa-cloud-upload-alt"></i>
+            </div>
+            <div class="upload-text">
+                Arrastra tu archivo aquí o haz clic para seleccionar
+            </div>
+            <div class="upload-hint">
+                Soporta audio y video en múltiples formatos
+            </div>
+        </div>
+
+        <div class="selected-file" id="selectedFile">
+            <div class="file-info">
+                <div>
+                    <div class="file-name" id="fileName"></div>
+                    <div class="file-size" id="fileSize"></div>
+                </div>
+                <button class="btn btn-secondary" onclick="clearFile()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+
+        <button class="btn" id="transcribeBtn" onclick="transcribeFile()" disabled>
+            <i class="fas fa-play"></i> Transcribir
+        </button>
+
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text" id="progressText">Procesando...</div>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+        <div class="success-message" id="successMessage"></div>
+
+        <div class="result-container" id="resultContainer">
+            <div class="result-title">
+                <i class="fas fa-check-circle"></i> Transcripción Completada
+            </div>
+            <div class="transcription-text" id="transcriptionText"></div>
+            <div class="download-section">
+                <button class="btn" onclick="downloadTranscription()">
+                    <i class="fas fa-download"></i> Descargar TXT
+                </button>
+            </div>
+        </div>
+
+        <div class="supported-formats">
+            <div class="formats-title">Formatos Soportados:</div>
+            <div class="formats-list">
+                <span class="format-tag">MP3</span>
+                <span class="format-tag">WAV</span>
+                <span class="format-tag">M4A</span>
+                <span class="format-tag">AAC</span>
+                <span class="format-tag">OGG</span>
+                <span class="format-tag">MP4</span>
+                <span class="format-tag">AVI</span>
+                <span class="format-tag">MOV</span>
+                <span class="format-tag">MKV</span>
+                <span class="format-tag">WEBM</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000';
+        let currentFile = null;
+        let transcriptionData = null;
+
+        // Configurar drag and drop
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            // Validar tipo de archivo
+            const allowedTypes = [
+                'audio/mp3', 'audio/wav', 'audio/m4a', 'audio/aac', 'audio/ogg', 'audio/flac',
+                'video/mp4', 'video/avi', 'video/mov', 'video/mkv', 'video/webm', 'video/m4v'
+            ];
+
+            if (!allowedTypes.includes(file.type) && !file.name.match(/\.(mp3|wav|m4a|aac|ogg|flac|mp4|avi|mov|mkv|webm|m4v)$/i)) {
+                showError('Tipo de archivo no soportado. Por favor, selecciona un archivo de audio o video válido.');
+                return;
+            }
+
+            // Validar tamaño (500MB)
+            if (file.size > 500 * 1024 * 1024) {
+                showError('El archivo es demasiado grande. El tamaño máximo es 500MB.');
+                return;
+            }
+
+            currentFile = file;
+            showSelectedFile(file);
+            enableTranscribeButton();
+            hideMessages();
+        }
+
+        function showSelectedFile(file) {
+            const selectedFile = document.getElementById('selectedFile');
+            const fileName = document.getElementById('fileName');
+            const fileSize = document.getElementById('fileSize');
+
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            selectedFile.classList.add('show');
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function clearFile() {
+            currentFile = null;
+            document.getElementById('selectedFile').classList.remove('show');
+            document.getElementById('fileInput').value = '';
+            disableTranscribeButton();
+            hideMessages();
+        }
+
+        function enableTranscribeButton() {
+            document.getElementById('transcribeBtn').disabled = false;
+        }
+
+        function disableTranscribeButton() {
+            document.getElementById('transcribeBtn').disabled = true;
+        }
+
+        function showProgress() {
+            document.getElementById('progressContainer').style.display = 'block';
+            document.getElementById('transcribeBtn').disabled = true;
+        }
+
+        function hideProgress() {
+            document.getElementById('progressContainer').style.display = 'none';
+            document.getElementById('transcribeBtn').disabled = false;
+        }
+
+        function updateProgress(percent, text) {
+            document.getElementById('progressFill').style.width = percent + '%';
+            document.getElementById('progressText').textContent = text;
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            hideProgress();
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+        }
+
+        function hideMessages() {
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'none';
+        }
+
+        async function transcribeFile() {
+            if (!currentFile) {
+                showError('Por favor, selecciona un archivo primero.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', currentFile);
+
+            showProgress();
+            updateProgress(10, 'Subiendo archivo...');
+
+            try {
+                const response = await fetch(`${API_URL}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                updateProgress(50, 'Procesando audio...');
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    updateProgress(100, '¡Transcripción completada!');
+                    
+                    setTimeout(() => {
+                        hideProgress();
+                        showTranscription(result);
+                        showSuccess('Transcripción completada exitosamente');
+                    }, 1000);
+                } else {
+                    throw new Error(result.error || 'Error en el servidor');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showError(error.message || 'Error al procesar el archivo');
+            }
+        }
+
+        function showTranscription(data) {
+            transcriptionData = data;
+            
+            const resultContainer = document.getElementById('resultContainer');
+            const transcriptionText = document.getElementById('transcriptionText');
+            
+            transcriptionText.textContent = data.transcription;
+            resultContainer.style.display = 'block';
+            
+            // Scroll to result
+            resultContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function downloadTranscription() {
+            if (!transcriptionData || !transcriptionData.txt_file) {
+                showError('No hay transcripción disponible para descargar.');
+                return;
+            }
+
+            const downloadUrl = `${API_URL}/download/${transcriptionData.txt_file}`;
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = transcriptionData.txt_file;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Verificar conexión con el servidor al cargar la página
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                if (!response.ok) {
+                    showError('No se puede conectar con el servidor. Asegúrate de que el backend esté ejecutándose.');
+                }
+            } catch (error) {
+                showError('No se puede conectar con el servidor. Asegúrate de que el backend esté ejecutándose.');
+            }
+        });
+    </script>
+</body>
+</html> 
