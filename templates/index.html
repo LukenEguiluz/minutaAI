@@ -156,13 +156,52 @@
             margin: 20px 0;
         }
 
+        .progress-stages {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+
+        .progress-stage {
+            flex: 1;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-stage-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-stage:nth-child(1) .progress-stage-fill { background: #667eea; }
+        .progress-stage:nth-child(2) .progress-stage-fill { background: #7c3aed; }
+        .progress-stage:nth-child(3) .progress-stage-fill { background: #764ba2; }
+
+        .progress-stage.active .progress-stage-fill {
+            box-shadow: 0 0 8px rgba(102, 126, 234, 0.5);
+        }
+
+        .progress-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: #888;
+            margin-bottom: 6px;
+        }
+
+        .progress-labels span.done { color: #667eea; font-weight: 600; }
+        .progress-labels span.active { color: #333; font-weight: 600; }
+
         .progress-bar {
             width: 100%;
-            height: 10px;
+            height: 6px;
             background: #f0f0f0;
-            border-radius: 5px;
+            border-radius: 3px;
             overflow: hidden;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
 
         .progress-fill {
@@ -290,6 +329,7 @@
             </div>
             <div class="upload-hint">
                 Soporta audio y video en múltiples formatos
+                <br><small style="color:#888">Audios largos: se dividen en bloques de 30 s, se transcriben y se unen al final</small>
             </div>
         </div>
 
@@ -310,8 +350,15 @@
         </button>
 
         <div class="progress-container" id="progressContainer">
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressFill"></div>
+            <div class="progress-labels" id="progressLabels">
+                <span id="label1">1. Subida</span>
+                <span id="label2">2. Creación de fragmentos</span>
+                <span id="label3">3. Transcripción</span>
+            </div>
+            <div class="progress-stages">
+                <div class="progress-stage" id="stage1"><div class="progress-stage-fill" id="stage1Fill"></div></div>
+                <div class="progress-stage" id="stage2"><div class="progress-stage-fill" id="stage2Fill"></div></div>
+                <div class="progress-stage" id="stage3"><div class="progress-stage-fill" id="stage3Fill"></div></div>
             </div>
             <div class="progress-text" id="progressText">Procesando...</div>
         </div>
@@ -349,7 +396,7 @@
     </div>
 
     <script>
-        const API_URL = 'http://localhost:5000';
+        const API_URL = window.location.origin;
         let currentFile = null;
         let transcriptionData = null;
 
@@ -449,9 +496,24 @@
             document.getElementById('transcribeBtn').disabled = false;
         }
 
-        function updateProgress(percent, text) {
-            document.getElementById('progressFill').style.width = percent + '%';
-            document.getElementById('progressText').textContent = text;
+        function updateProgress(phase, percentInPhase, text) {
+            // phase: 1=subida, 2=creación de fragmentos, 3=transcripción. percentInPhase: 0-100 dentro de esa fase
+            var p = Math.max(0, Math.min(100, percentInPhase));
+            document.getElementById('stage1Fill').style.width = (phase > 1 ? 100 : (phase === 1 ? p : 0)) + '%';
+            document.getElementById('stage2Fill').style.width = (phase > 2 ? 100 : (phase === 2 ? p : 0)) + '%';
+            document.getElementById('stage3Fill').style.width = (phase === 3 ? p : 0) + '%';
+            document.getElementById('progressText').textContent = text || '';
+
+            document.querySelectorAll('.progress-stage').forEach(function(el, i) { el.classList.remove('active'); });
+            document.querySelectorAll('.progress-labels span').forEach(function(el) { el.classList.remove('done', 'active'); });
+            for (var i = 1; i <= 3; i++) {
+                if (i < phase) {
+                    document.getElementById('label' + i).classList.add('done');
+                } else if (i === phase) {
+                    document.getElementById('stage' + i).classList.add('active');
+                    document.getElementById('label' + i).classList.add('active');
+                }
+            }
         }
 
         function showError(message) {
@@ -472,7 +534,7 @@
             document.getElementById('successMessage').style.display = 'none';
         }
 
-        async function transcribeFile() {
+        function transcribeFile() {
             if (!currentFile) {
                 showError('Por favor, selecciona un archivo primero.');
                 return;
@@ -482,33 +544,83 @@
             formData.append('file', currentFile);
 
             showProgress();
-            updateProgress(10, 'Subiendo archivo...');
+            updateProgress(1, 0, 'Subiendo archivo... 0%');
 
-            try {
-                const response = await fetch(`${API_URL}/upload`, {
-                    method: 'POST',
-                    body: formData
-                });
+            const xhr = new XMLHttpRequest();
+            const url = (API_URL || '') + '/upload';
 
-                updateProgress(50, 'Procesando audio...');
-
-                const result = await response.json();
-
-                if (response.ok) {
-                    updateProgress(100, '¡Transcripción completada!');
-                    
-                    setTimeout(() => {
-                        hideProgress();
-                        showTranscription(result);
-                        showSuccess('Transcripción completada exitosamente');
-                    }, 1000);
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const pct = Math.round((e.loaded / e.total) * 100);
+                    updateProgress(1, pct, 'Subiendo archivo... ' + pct + '%');
                 } else {
-                    throw new Error(result.error || 'Error en el servidor');
+                    updateProgress(1, 10, 'Subiendo archivo...');
                 }
-            } catch (error) {
-                console.error('Error:', error);
-                showError(error.message || 'Error al procesar el archivo');
-            }
+            });
+
+            xhr.addEventListener('load', () => {
+                try {
+                    const result = JSON.parse(xhr.responseText);
+                    if (xhr.status >= 400) {
+                        showError(result.error || 'Error en el servidor');
+                        return;
+                    }
+                    const jobId = result.job_id;
+                    const totalChunks = result.total_chunks || 1;
+                    const durationSec = result.duration_sec || 0;
+                    updateProgress(2, 0, 'Creando fragmentos... (' + totalChunks + ' fragmentos, ' + durationSec + 's)');
+                    pollStatus(jobId, totalChunks);
+                } catch (e) {
+                    showError('Error al leer la respuesta del servidor');
+                }
+            });
+
+            xhr.addEventListener('error', () => showError('Error de conexión al subir el archivo'));
+            xhr.addEventListener('abort', () => { hideProgress(); showError('Subida cancelada'); });
+
+            xhr.open('POST', url);
+            xhr.send(formData);
+        }
+
+        function pollStatus(jobId, totalChunks) {
+            const url = (API_URL || '') + '/upload/status/' + jobId;
+            const interval = setInterval(async () => {
+                try {
+                    const res = await fetch(url);
+                    const data = await res.json();
+                    const total = data.total_chunks || totalChunks || 1;
+                    const current = data.current_chunk || 0;
+                    const step = data.step || '';
+
+                    if (step === 'transcribing' && total > 0) {
+                        var pct = Math.round((current / total) * 100);
+                        updateProgress(3, pct, 'Transcribiendo fragmento ' + current + '/' + total + ' (' + pct + '%)');
+                    } else {
+                        updateProgress(2, 50, 'Creando fragmentos... (dividiendo audio)');
+                    }
+
+                    if (data.status === 'done') {
+                        clearInterval(interval);
+                        updateProgress(3, 100, '¡Transcripción completada!');
+                        setTimeout(() => {
+                            hideProgress();
+                            showTranscription({
+                                success: true,
+                                transcription: data.transcription || '',
+                                txt_file: data.txt_file || '',
+                                chunks_processed: data.chunks_processed || 0
+                            });
+                            showSuccess('Transcripción completada exitosamente');
+                        }, 500);
+                    } else if (data.status === 'error') {
+                        clearInterval(interval);
+                        showError(data.error || 'Error en el servidor');
+                    }
+                } catch (e) {
+                    clearInterval(interval);
+                    showError('Error al consultar el progreso');
+                }
+            }, 1500);
         }
 
         function showTranscription(data) {

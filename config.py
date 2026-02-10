@@ -28,8 +28,8 @@ class Config:
     # Configuración de Whisper
     WHISPER_MODEL = 'base'  # Opciones: 'tiny', 'base', 'small', 'medium', 'large'
     
-    # Configuración de chunks
-    CHUNK_DURATION = 30  # segundos
+    # Configuración de chunks (audios largos: se dividen en bloques, se transcriben y se unen al final)
+    CHUNK_DURATION = 30  # segundos por bloque (15–30 recomendado; menor = más preciso, más lento)
     
     # Configuración de limpieza
     CLEANUP_TEMP_FILES = True
