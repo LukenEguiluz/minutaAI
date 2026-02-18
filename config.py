@@ -25,8 +25,8 @@ class Config:
         'mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv', 'webm', 'm4v'
     }
     
-    # Configuración de Whisper
-    WHISPER_MODEL = 'base'  # Opciones: 'tiny', 'base', 'small', 'medium', 'large'
+    # Configuración de Whisper (puede sobrescribirse con env WHISPER_MODEL)
+    WHISPER_MODEL = os.environ.get('WHISPER_MODEL', 'base')  # tiny, base, small, medium, large
     
     # Configuración de chunks (audios largos: se dividen en bloques, se transcriben y se unen al final)
     CHUNK_DURATION = 30  # segundos por bloque (15–30 recomendado; menor = más preciso, más lento)

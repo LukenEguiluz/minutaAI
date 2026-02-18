@@ -102,6 +102,22 @@ pip install openai-whisper==20231117
 pip install git+https://github.com/openai/whisper.git
 ```
 
+## 🐳 Docker (hostear en PC / VPN / dominio)
+
+Para ejecutar MinutaAI en un contenedor Docker y exponerlo en tu red o VPN:
+
+```bash
+# Construir y ejecutar
+docker compose up -d
+
+# Ver logs
+docker compose logs -f minutaai
+```
+
+La app estará disponible en `http://localhost:5000` y escucha en todas las interfaces (`0.0.0.0`), por lo que es accesible desde otros dispositivos en tu red local y desde tu VPN.
+
+**Puentear a un dominio**: Usa un túnel (Cloudflare Tunnel, ngrok, Tailscale) o un reverse proxy (nginx, Caddy) en tu PC para apuntar tu dominio al puerto 5000. Ver [DOCKER.md](DOCKER.md) para más detalles.
+
 ## 🚀 Uso
 
 ### Verificar Instalación
